@@ -3,6 +3,7 @@ import { Entry } from "src/interfaces"
 import { EntriesContext } from "./EntriesContext"
 import { entriesReducer } from "./entriesReducer"
 import { entriesApi } from "src/apis";
+import { useSnackbar } from "notistack";
 
 export interface EntriesState {
     entries: Entry[],
@@ -19,6 +20,7 @@ interface Props {
 
 export const EntriesProvider: FC<Props> = ({ children }) => {
     const [state, dispatch] = useReducer(entriesReducer, ENTRIES_INITIAL_STATE)
+    const {enqueueSnackbar} = useSnackbar();
 
     const AddNewEntry = async (description:string) =>{
        const {data} = await entriesApi.post<Entry>('/entries',{description})
@@ -26,13 +28,29 @@ export const EntriesProvider: FC<Props> = ({ children }) => {
         dispatch({type:'[Entry] Add-Entry',payload:data})
     }
 
-    const updateEntry = async ({_id,description,status}:Entry) =>{
+    const updateEntry = async ({_id,description,status}:Entry,showSnackbar = false) =>{
         try{
         const {data} = await entriesApi.put<Entry>(`/entries/${_id}`,{description,status})
         dispatch({type:"[Entry] Entry-update",payload:data})
+        //Mostrar snackbar
+        if(showSnackbar){
+        enqueueSnackbar('Entrada actualizada',{
+            variant:'success',
+            autoHideDuration:1500,
+            anchorOrigin:{
+                vertical:'top',
+                horizontal:'right'
+            }
+        });
+    }
         }catch(error){
             console.log({error})
         }
+    }
+
+    const deleteEntry = async (id:string) =>{
+        await entriesApi.delete(`/entries/${id}`);
+        refreshEntries();
     }
 
     const refreshEntries = async () =>{
@@ -48,7 +66,8 @@ export const EntriesProvider: FC<Props> = ({ children }) => {
     return (<EntriesContext.Provider value={{
         ...state,
         AddNewEntry,
-        updateEntry
+        updateEntry,
+        deleteEntry
     }}>
         {children}
     </EntriesContext.Provider>)
